@@ -6,20 +6,20 @@ function _init()
 			{
 				index=1,
 				sprite=2,x=10,y=10,
-				likes={"cake;school;family"},
-				text={"hey, how are you?;test"}
+				likes="cake;school;family",
+				text="hey, how are you?;test"
 			},
 			{
 				index=2,
 				sprite=3,x=20,y=20, 
-				likes={"testing;gaming;family"},
-				text={"hey, sup?;test"}
+				likes="testing;gaming;family",
+				text="hey, sup?;test"
 			},
 			{
 				index=3,
 				sprite=4,x=30,y=30, 
-				likes={"testing;gaming;family"},
-				text={"hey, sup bro?;test"}
+				likes="testing;gaming;family",
+				text="hey, sup bro?;test"
 			},	
 	}
 	frame = 0.01
@@ -63,6 +63,8 @@ function _update()
 	
 	if btn(4) and current_villager then
 		debug_text="♥"
+		local split_text = split(current_villager.text, ";")
+		current_text = split_text[1]
 	end
 	
 	frame += 0.05
@@ -75,7 +77,7 @@ function _draw()
  		
  	rectfill(63, 0, 128, 128, 6)
  	rectfill(0, 100, 128, 128, 16)
- 	print("example text here ..", 1, 105, 6)
+ 	print(current_text, 1, 105, 6)
  	
  	for i=1,#villagers do
  		local my = cos(frame) * i * 0.1
