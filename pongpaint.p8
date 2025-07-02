@@ -10,28 +10,31 @@ function _update()
 			update_enemy()
 			update_arrows()
 			update_animation(player)
+			update_dead_timers()
 			if shoot_cooldown_frames > 0 then
 				shoot_cooldown_frames -= 1
 			end
 			
-			if btn(0) then
-				player.x -= 1
-				player.direction = 0
-			elseif btn(1) then
-				player.x += 1
-				player.direction = 2
-			end
-			if btn(2) then
-				player.y -= 1
-				player.direction = 1
-			elseif btn(3) then
-				player.y += 1
-				player.direction = 3
-			end	
-			
-			if btn(4) and shoot_cooldown_frames <= 0 then
-			 shoot_cooldown_frames = 20
-				shoot_arrow(player, 0, -1)
+			if player.dead == false then
+				if btn(0) then
+					player.x -= 1
+					player.direction = 0
+				elseif btn(1) then
+					player.x += 1
+					player.direction = 2
+				end
+				if btn(2) then
+					player.y -= 1
+					player.direction = 1
+				elseif btn(3) then
+					player.y += 1
+					player.direction = 3
+				end	
+				
+				if btn(5) and shoot_cooldown_frames <= 0 then
+				 shoot_cooldown_frames = 20
+				 shoot_arrow(player)
+				end
 			end
 		else
 			for i=1, #level do
@@ -52,12 +55,12 @@ function _update()
 			game_state = "game_over"
 		end
 	elseif game_state == "menu" then
-		if btn(4) then
+		if btn(5) then
 			game_state = "playing"
 			_init()
 		end
 	elseif game_state == "game_over" then
-		if btn(4) then
+		if btn(5) then
 			game_state = "playing"
 			_init()
 		end
@@ -87,7 +90,9 @@ function _draw()
 		-- endof ui --
 	elseif game_state == "menu" then
 		rectfill(0, 0, 128, 128, 2)
-		print("start game?", 45, 60, 15)
+		print("start game?", 30, 50, 15)
+		print("press ❎ to start", 30, 60, 15)
+		print("controls: ❎ = shoot", 30, 70, 15)
 	elseif game_state == "game_over" then
 		local score = "player: "..tiles_player.." / enemy: "..tiles_enemy
 		local text = "its a draw!..."
@@ -102,7 +107,8 @@ function _draw()
 		end
 		rectfill(0, 0, 128, 128, c)
 		print(score, 10, 40, c_t)
-		print("winner: "..winner..", play again?", 10, 60, c_t)
+		print("winner: "..winner, 20, 60, c_t)
+		print("❎ to play again!", 20, 70, c_t)
 	end
 end
 -->8
@@ -113,11 +119,11 @@ function _init()
 	tiles_player = 0
 			
 	winner = "draw"
-	round_time = 5 * 30 -- becaue: 30 fps --
+	round_time = 15 * 30 -- becaue: 30 fps --
 	time_left = round_time
 	map_size=32
 	tile_size=4
-	shoot_cooldown_frames = 20
+	shoot_cooldown_frames = 5
 	enemy_shoot_cooldown_frames = 50
 	
 	player = {
@@ -126,7 +132,9 @@ function _init()
 		direction=0, -- 0 = left, 1 = up, 2 = right, 3 = down --
 		base_spr_index = 0,
 		current_animation=nil,
-		c = 2
+		c = 2,
+		dead = false,
+		dead_timer = 100
 	}
 	enemy={
 		x = 63,
@@ -134,8 +142,11 @@ function _init()
 		direction = 0,
 		base_spr_index = 16,
 		current_animation=nil,
-		c = 15
+		c = 15,
+		dead = false,
+		dead_timer = 100
 	}
+	characters = {enemy, player}
 	arrows={}
 	ball = {
 		x = 62,
@@ -172,6 +183,19 @@ function update_level_once(target_x, target_y, new_c)
 				return				
 			end
 		end
+end
+
+function update_dead_timers()
+ for i=1, #characters do
+		if characters[i].dead then
+			characters[i].dead_timer -=1
+			if characters[i].dead_timer < 0 then
+				-- temp --
+				characters[i].x = rnd(0, 32) + 1
+				characters[i].y = rnd(0, 32) + 1
+			end
+		end
+ end
 end
 
 function play_animation(
@@ -244,7 +268,19 @@ function draw_animations()
 end
 
 -->8
-function shoot_arrow(character, dx, dy)
+function shoot_arrow(character)
+	local dx = 0
+ local dy = 0
+ if character.direction == 0 then
+ 	dx = -1
+ elseif character.direction == 1 then
+ 	dy = -1
+ elseif character.direction == 2 then
+ 	dx = 1
+ elseif character.direction == 3 then
+ 	dy = 1
+ end
+				
 	local spawn_x = character.x + 4
 	local spawn_y = character.y + 4
 	local corrected_x = (ceil(spawn_x / tile_size) * tile_size) + 1
@@ -260,6 +296,11 @@ function shoot_arrow(character, dx, dy)
 		speed = 2
 	}
 	add(arrows, arrow)
+end
+
+function arrow_hit(character_hit)
+	character_hit.dead = true
+	-- idea: blow character up and splash paint --
 end
 
 function draw_arrows()
@@ -286,6 +327,16 @@ function update_arrows()
 			arrow_to_del = arrow
 		else
 			update_level_once(arrow.x, arrow.y, arrow.c)
+			if arrow.c == player.c then
+				debug_text = "a "..arrow.x.." e "..enemy.x
+				if arrow.x > enemy.x and
+				arrow.x < enemy.x + 8 and
+				arrow.y > enemy.y and
+				arrow.y < enemy.y + 8 then
+					arrow_hit(enemy)
+				end
+			else
+			end
 		end
 	end
 	
@@ -313,13 +364,23 @@ function update_enemy()
  enemy_shoot_cooldown_frames -= 1
  if enemy_shoot_cooldown_frames <= 0 then
  	enemy_shoot_cooldown_frames = rnd(40) + 40	
- 	shoot_arrow(enemy, 0, 1)
+ 	local dir_to_player = -1
+  -- todo: fix later --
+ 	if dir_to_player == -1 then
+ 		dir_to_player = flr(rnd(4))
+ 	end
+ 	enemy.direction = dir_to_player
+ 	shoot_arrow(enemy)
  end
  
 	if enemy.direction == 0 then
 		enemy.x -= 1
 	elseif enemy.direction == 2 then
 		enemy.x += 1
+	elseif enemy.direction == 1 then
+		enemy.y -= 1
+	elseif enemy.direction == 3 then
+		enemy.y += 1
 	end
 	
 	if enemy.x < 2 then
@@ -328,6 +389,12 @@ function update_enemy()
 	elseif enemy.x > 120 then
 		enemy.x -= 1
 		enemy.direction = 0
+	elseif enemy.y < 2 then
+		enemy.y += 1
+		enemy.direction = 3
+	elseif enemy.y > 120 then
+		enemy.y -= 1
+		enemy.direction = 1
 	end
 end
 __gfx__
