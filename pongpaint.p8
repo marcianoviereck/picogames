@@ -340,7 +340,8 @@ function update_arrows()
 		or arrow.y > 128 or arrow.y < 0 then
 			arrow_to_del = arrow
 		else
-			update_level_once(arrow.x, arrow.y, arrow.c)
+			-- + 2 is to fix the offset of the arrow.. --
+			update_level_once(arrow.x + 2, arrow.y + 2, arrow.c)
 			if arrow.c == player.c then
 				debug_text = "a "..arrow.x.." e "..enemy.x
 				if arrow.x > enemy.x and
