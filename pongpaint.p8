@@ -2,56 +2,119 @@ pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
 function _update()
-	move_ball()
-	update_enemy()
-	update_arrows()
-	update_animation(player)
-	if shoot_cooldown_frames > 0 then
-		shoot_cooldown_frames -= 1
-	end
-	
-	if btn(0) then
-		player.x -= 1
-		player.direction = 0
-	elseif btn(1) then
-		player.x += 1
-		player.direction = 2
-	end
-	if btn(2) then
-		player.y -= 1
-		player.direction = 1
-	elseif btn(3) then
-		player.y += 1
-		player.direction = 3
-	end	
-	
-	if btn(4) and shoot_cooldown_frames <= 0 then
-	 shoot_cooldown_frames = 20
-		shoot_arrow(player, 0, -1)
+	if game_state == "playing" then
+		if time_left > 0 then
+		 time_left -= 1
+		
+			move_ball()
+			update_enemy()
+			update_arrows()
+			update_animation(player)
+			if shoot_cooldown_frames > 0 then
+				shoot_cooldown_frames -= 1
+			end
+			
+			if btn(0) then
+				player.x -= 1
+				player.direction = 0
+			elseif btn(1) then
+				player.x += 1
+				player.direction = 2
+			end
+			if btn(2) then
+				player.y -= 1
+				player.direction = 1
+			elseif btn(3) then
+				player.y += 1
+				player.direction = 3
+			end	
+			
+			if btn(4) and shoot_cooldown_frames <= 0 then
+			 shoot_cooldown_frames = 20
+				shoot_arrow(player, 0, -1)
+			end
+		else
+			for i=1, #level do
+				if level[i].c == player.c then
+					tiles_player += 1
+				else
+					tiles_enemy += 1
+				end
+			end
+			
+			winner = "draw"
+			if tiles_player > tiles_enemy then
+				winner = "player"
+			elseif tiles_enemy > tiles_player then
+				winner = "enemy"
+			end
+			
+			game_state = "game_over"
+		end
+	elseif game_state == "menu" then
+		if btn(4) then
+			game_state = "playing"
+			_init()
+		end
+	elseif game_state == "game_over" then
+		if btn(4) then
+			game_state = "playing"
+			_init()
+		end
 	end
 end
 
 function _draw()
 	cls()
-	for i=1,#level do
-		circfill(level[i].x, level[i].y, 4, level[i].c)	
-	end
-	circfill(ball.x, ball.y, 2, ball.c)
-	draw_character(player.x, player.y, player.direction, player.base_spr_index) 
-	draw_character(enemy.x, enemy.y, enemy.direction, enemy.base_spr_index)
-	draw_animations()
-	draw_arrows()
 	
-		-- ui --
-	rectfill(0, 0, 128, 6, 8)
-	print(#arrows, 1, 1, 7)
-	if debug_text then
-		print(debug_text, 100 - #debug_text, 1, 7)
+	if game_state == "playing" then
+		for i=1,#level do
+			circfill(level[i].x, level[i].y, 4, level[i].c)	
+		end
+		circfill(ball.x, ball.y, 2, ball.c)
+		draw_character(player.x, player.y, player.direction, player.base_spr_index) 
+		draw_character(enemy.x, enemy.y, enemy.direction, enemy.base_spr_index)
+		draw_animations()
+		draw_arrows()
+		
+			-- ui --
+		rectfill(0, 0, 128, 6, 8)
+		print(ceil(time_left / 30), 1, 1, 7) -- /30 because; 30 fps --
+		if debug_text then
+			print(debug_text, 100 - #debug_text, 1, 7)
+		end
+		
+		-- endof ui --
+	elseif game_state == "menu" then
+		rectfill(0, 0, 128, 128, 2)
+		print("start game?", 45, 60, 15)
+	elseif game_state == "game_over" then
+		local score = "player: "..tiles_player.." / enemy: "..tiles_enemy
+		local text = "its a draw!..."
+		local c = 5
+		local c_t = 6
+		if winner == "enemy" then
+			c = enemy.c
+			c_t = player.c
+		elseif winner == "player" then
+			c = player.c
+			c_t = enemy.c
+		end
+		rectfill(0, 0, 128, 128, c)
+		print(score, 10, 40, c_t)
+		print("winner: "..winner..", play again?", 10, 60, c_t)
 	end
-	-- endof ui --
 end
 -->8
+game_state = "menu" -- can be: menu, playing, game_over --
+	
 function _init()
+	tiles_enemy = 0
+	tiles_player = 0
+			
+	winner = "draw"
+	round_time = 5 * 30 -- becaue: 30 fps --
+	time_left = round_time
 	map_size=32
 	tile_size=4
 	shoot_cooldown_frames = 20
@@ -67,7 +130,7 @@ function _init()
 	}
 	enemy={
 		x = 63,
-		y = 0,
+		y = 10,
 		direction = 0,
 		base_spr_index = 16,
 		current_animation=nil,
@@ -85,7 +148,7 @@ function _init()
 	for x=1, map_size do
 		for y=1, map_size do
 				local col = player.c
-				if y < map_size / 2 then
+				if y <= (map_size / 2) then
 					col = enemy.c
 				end
 			add(level, {x=x*tile_size-1, y=y*tile_size-1, c=col})
