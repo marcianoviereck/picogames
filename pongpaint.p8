@@ -6,7 +6,6 @@ function _update()
 		if time_left > 0 then
 		 time_left -= 1
 		
-			move_ball()
 			update_enemy()
 			update_arrows()
 			update_animation(player)
@@ -16,18 +15,19 @@ function _update()
 			end
 			
 			if player.dead == false then
+				local speed = player.speed
 				if btn(0) then
-					player.x -= 1
+					player.x -= speed
 					player.direction = 0
 				elseif btn(1) then
-					player.x += 1
+					player.x += speed
 					player.direction = 2
 				end
 				if btn(2) then
-					player.y -= 1
+					player.y -= speed
 					player.direction = 1
 				elseif btn(3) then
-					player.y += 1
+					player.y += speed
 					player.direction = 3
 				end	
 				
@@ -74,7 +74,6 @@ function _draw()
 		for i=1,#level do
 			circfill(level[i].x, level[i].y, 4, level[i].c)	
 		end
-		circfill(ball.x, ball.y, 2, ball.c)
 		draw_character(player) 
 		draw_character(enemy)
 		draw_animations()
@@ -133,8 +132,10 @@ function _init()
 		base_spr_index = 0,
 		current_animation=nil,
 		c = 2,
+		drawcolor = 1,
 		dead = false,
-		dead_timer = 100
+		dead_timer = 100,
+		speed = 1.5
 	}
 	enemy={
 		x = 63,
@@ -143,8 +144,10 @@ function _init()
 		base_spr_index = 16,
 		current_animation=nil,
 		c = 15,
+		drawcolor = 3,
 		dead = false,
-		dead_timer = 100
+		dead_timer = 100,
+		speed = 1.5
 	}
 	characters = {enemy, player}
 	arrows={}
@@ -192,8 +195,8 @@ function update_dead_timers()
 			if characters[i].dead_timer < 0 then
 				characters[i].dead = false
 				characters[i].dead_timer = 100
-				characters[i].x = rnd(0, 32) + 1
-				characters[i].y = rnd(0, 32) + 1
+				characters[i].x = rnd(32) + 1
+				characters[i].y = rnd(32) + 1
 
 			end
 		end
@@ -303,30 +306,22 @@ function shoot_arrow(character)
 		dx = dx,
 		dy = dy,
 		c = character.c,
+		drawcolor = character.drawcolor,
 		size = 0.5,
-		speed = 2
+		speed = 8
 	}
 	add(arrows, arrow)
 end
 
 function arrow_hit(character_hit)
 	character_hit.dead = true
-	-- temp --
 	-- idea: blow character up and splash paint --
 end
 
 function draw_arrows()
 	for i=1, #arrows do
 		local arrow = arrows[i]
-		rectfill(arrow.x, arrow.y, arrow.x + 1, arrow.y + 1, 10) 
-		
-		line(
-			arrow.x, 
-			arrow.y, 
-			arrow.x + arrow.dx * arrow.size, 
-			arrow.y + arrow.dy * arrow.size, 
-			1
-		)
+		rectfill(arrow.x, arrow.y, arrow.x + 1, arrow.y + 1, arrow.drawcolor) 		
 	end
 end
 
@@ -343,7 +338,6 @@ function update_arrows()
 			-- + 2 is to fix the offset of the arrow.. --
 			update_level_once(arrow.x + 2, arrow.y + 2, arrow.c)
 			if arrow.c == player.c then
-				debug_text = "a "..arrow.x.." e "..enemy.x
 				if arrow.x > enemy.x and
 				arrow.x < enemy.x + 8 and
 				arrow.y > enemy.y and
@@ -351,6 +345,12 @@ function update_arrows()
 					arrow_hit(enemy)
 				end
 			else
+				if arrow.x > player.x and
+				arrow.x < player.x + 8 and
+				arrow.y > player.y and
+				arrow.y < player.y + 8 then
+					arrow_hit(player)
+				end
 			end
 		end
 	end
@@ -360,20 +360,7 @@ function update_arrows()
 	end
 end
 -->8
-function move_ball()
-	ball.x += ball.dx
-	ball.y += ball.dy
-	if ball.x > 127 then
-		ball.dx = -1
-	elseif ball.x < 1 then
-		ball.dx = 1
-	end
-	if ball.y > 127  then
-		ball.dy = -1
-	elseif ball.y < 1 then
-		ball.dy = 1
-	end
-end
+
 -->8
 function update_enemy()
 	if enemy.dead then
@@ -391,37 +378,39 @@ function update_enemy()
  	shoot_arrow(enemy)
  end
  
+ local speed = enemy.speed
+ 
 	if enemy.direction == 0 then
-		enemy.x -= 1
+		enemy.x -= speed
 	elseif enemy.direction == 2 then
-		enemy.x += 1
+		enemy.x += speed
 	elseif enemy.direction == 1 then
-		enemy.y -= 1
+		enemy.y -= speed
 	elseif enemy.direction == 3 then
-		enemy.y += 1
+		enemy.y += speed
 	end
 	
 	if enemy.x < 2 then
-		enemy.x += 1
+		enemy.x += speed
 		enemy.direction = 2
 	elseif enemy.x > 120 then
-		enemy.x -= 1
+		enemy.x -= speed
 		enemy.direction = 0
 	elseif enemy.y < 2 then
-		enemy.y += 1
+		enemy.y += speed
 		enemy.direction = 3
 	elseif enemy.y > 120 then
-		enemy.y -= 1
+		enemy.y -= speed
 		enemy.direction = 1
 	end
 end
 __gfx__
 01111100001111100111100006000000066116600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-01111100001111100111100060000000600000060001000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-01626100001111100261100060000000000000000011100000000000000000000000000000000000000000000000000000000000000000000000000000000000
+01111100001111100111100060000000600000060001000020202020000000000000000000000000000000000000000000000000000000000000000000000000
+01626100001111100261100060000000000000000011100002020200000000000000000000000000000000000000000000000000000000000000000000000000
 01666100001111100666100010000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00060000000010000006000010000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00661000000661000011100060000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00060000000010000006000010000000000000000001000020202020000000000000000000000000000000000000000000000000000000000000000000000000
+00661000000661000011100060000000000000000001000002020200000000000000000000000000000000000000000000000000000000000000000000000000
 00626000000616000021600060000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00166000000166000016600006000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 03333300033333000333300006000000066336600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
