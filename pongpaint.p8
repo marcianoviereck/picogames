@@ -251,8 +251,19 @@ function update_dead_timers()
 			if characters[i].dead_timer < 0 then
 				characters[i].dead = false
 				characters[i].dead_timer = 100
-				characters[i].x = rnd(32) + 1
-				characters[i].y = rnd(32) + 1
+				local random_tile_x = ceil(rnd(map_size) + 1)
+				local random_tile_y = ceil(rnd(map_size) + 1)
+				
+				if characters[i] == enemy then
+					local tile = level_tiles[random_tile_x..":"..random_tile_y]
+					enemy.x = tile.x
+					enemy.y = tile.y
+					enemy.actions.current_tile = tile
+					enemy.actions.searching = true						
+				else
+					characters[i].x = random_tile_x
+					characters[i].y = random_til
+				end
 				sfx(4)
 			end
 		end
@@ -441,8 +452,12 @@ function update_enemy()
 	if enemy.actions.searching then
 	 local randomx = ceil(rnd(32) + 1)
 	 local randomy = ceil(rnd(32) + 1)
-	 	 
 	 local target_tile = level_tiles[randomx..":"..randomy]
+	 if target_tile == enemy.actions.current_tile then
+	 	debug_text = "same!"
+	 	-- temp.. --
+	 	return
+	 end
 	 enemy.actions.path = {}
 	 enemy.actions.target_tile = target_tile
 	 enemy.actions.searching = false
@@ -453,15 +468,9 @@ function update_enemy()
 	end
 	
 	if enemy.actions.state == "walking" then
-		local path = enemy.actions.target_tile_path
+		local path = enemy.actions.path
 		local tile = enemy.actions.target_tile
-		if path and #path > 1 then
-			walk_to_path(path, "following_path")
-		elseif enemy.actions.target_tile then
-			walk_to(tile, "searching")
-		else 
-			enemy.actions.state = "searching"
-		end
+		walk_to_path(path)
 	elseif enemy.actions.state == "painting" then
 	elseif enemy.actions.state == "shooting" then
 	end
@@ -480,14 +489,19 @@ function update_enemy()
 end
 
 function walk_to_path(path)
- local first = path[1]
- walk_to(first, "")
- 
+ if #path > 0 then
+ 	walk_on_path(path)
+ else
+ 	debug_text = "done!"
+ 	enemy.actions.state = "searching"
+ 	enemy.actions.searching = true
+ end 
 end
 
-function walk_to(tile, state_on_finish)
-	local dist_x = tile.x - enemy.x
-	local dist_y = tile.y - enemy.y 
+function walk_on_path(path)
+	local target = path[1]
+	local dist_x = target.x - enemy.x
+	local dist_y = target.y - enemy.y 
 	local dist = calc_distance(dist_x, dist_y)
 	local speed = enemy.speed
 	local move_amount = 0
@@ -511,8 +525,8 @@ function walk_to(tile, state_on_finish)
 		
 		-- temp .. --
 		if dist < 1.6 then
-			-- done --
-			enemy.actions.state = state_on_finish
+			-- done.. for now just delete first index --
+			del(path, target)	
 		end
 	end	
 end
@@ -522,8 +536,9 @@ function find_path(target_tile)
 	local current_tile = enemy.actions.current_tile
 	local closest_tile = closest_neighbour(current_tile, target_tile)
 	if closest_tile == target_tile then
-		-- done --
+		-- done, start walking? --
 		enemy.actions.finding_path = false
+		enemy.actions.state = "walking"
 	else
 		add(enemy.actions.path, closest_tile)
 		--debug_text = closest_tile.x..":"..closest_tile.y
