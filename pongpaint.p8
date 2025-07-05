@@ -80,6 +80,14 @@ function _draw()
 			local level_sprite = level_sprites[i]
 			circfill(level_sprite.x, level_sprite.y, 4, level_sprite.c)	
 		end
+		
+		-- for pathing debug ! -- 
+		for i=1, #enemy.actions.path do
+			local tile = enemy.actions.path[i]
+			circfill(tile.x, tile.y, 1, 11)				
+		end
+
+		
 		draw_character(player) 
 		draw_character(enemy)
 		draw_animations()
@@ -516,8 +524,6 @@ function find_path(target_tile)
 	if closest_tile == target_tile then
 		-- done --
 		enemy.actions.finding_path = false
-	 debug_text = "path:"..#enemy.actions.path..""
-
 	else
 		add(enemy.actions.path, closest_tile)
 		--debug_text = closest_tile.x..":"..closest_tile.y
