@@ -38,11 +38,14 @@ function _update()
 				end
 			end
 		else
-			for i=1, #level do
-				if level[i].c == player.c then
-					tiles_player += 1
-				else
-					tiles_enemy += 1
+			for x=1, map_size do
+				for y=1, map_size do
+					local tile = level_tiles[x..":"..y]
+					if tile.c == player.c then
+						tiles_player += 1
+					else
+						tiles_enemy += 1
+					end
 				end
 			end
 			
@@ -72,8 +75,9 @@ function _draw()
 	cls()
 	
 	if game_state == "playing" then
-		for i=1,#level do
-			circfill(level[i].x, level[i].y, 4, level[i].c)	
+		for i=1, #level_sprites do
+			local level_sprite = level_sprites[i]
+			circfill(level_sprite.x, level_sprite.y, 4, level_sprite.c)	
 		end
 		draw_character(player) 
 		draw_character(enemy)
@@ -86,7 +90,7 @@ function _draw()
 		if debug_text then
 			print(debug_text, 100 - #debug_text, 1, 7)
 		end
-		
+		print("mem: "..(stat(0) / 2048), 20, 1, 7) 
 		-- endof ui --
 	elseif game_state == "menu" then
 		rectfill(0, 0, 128, 128, 2)
@@ -114,10 +118,11 @@ end
 -->8
 game_state = "menu" -- can be: menu, playing, game_over --
 	
+	-- max mem = 2048 -- !
 function _init()
 	--sfx(2)--
 	tiles_enemy = 0
-	tiles_player = 0		
+	tiles_player = 0
 	winner = "draw"
 	round_time = 15 * 30 -- becaue: 30 fps --
 	time_left = round_time
@@ -159,18 +164,22 @@ function _init()
 		dy = 1,
 		c = 0
 	}
-	local level_walls = level_objs[1].walls
-	level = {}
+	level_tiles = {}
+	level_sprites = {}
+	build_level()
+end
+
+function build_level()
 	for x=1, map_size do
 		for y=1, map_size do
-			local is_wall = false
-			for i=1, #level_walls do
-				if x == level_walls[i].x 
-					and y == level_walls[i].y then
-						is_wall = true
-				end
-			end
-			add(level, {x=x*tile_size-1, y=y*tile_size-1, c=0, is_wall=is_wall})
+			local col = 16
+			--local col = player.c
+				--if y <= (map_size / 2) then
+				--	col = enemy.c
+				--end
+			local tile = {x=x*tile_size-1, y=y*tile_size-1, c=col}	
+			level_tiles[x..":"..y] = tile
+			add(level_sprites, tile)
 		end
 	end
 end
@@ -178,17 +187,17 @@ end
 function update_paint_touches()
 	for i=1, #characters do
 		local character = characters[i]
-		for li=1, #level do
-			local level_tile = level[li]
+		for li=1, #level_sprites do
+			local level_tile = level_sprites[li]
 			if (character.c == enemy.c 
 				and level_tile.c == player.c) or
-				(character.c == player.c and
-				level_tile.c == enemy.c) then
+					(character.c == player.c and
+					level_tile.c == enemy.c) then
 				if character.x > level_tile.x and
-				character.x < level_tile.x + 8 and
-				character.y > level_tile.y and
-				character.y < level_tile.y + 8 then
-					--character_hit(enemy)
+					character.x < level_tile.x + 8 and
+					character.y > level_tile.y and
+					character.y < level_tile.y + 8 then
+						--character_hit(enemy)
 				end
 			end
 		end
@@ -196,22 +205,23 @@ function update_paint_touches()
 end
 
 function update_level_once(target_x, target_y, new_c)
-	for i=1, #level do
-			if level[i].c ~= new_c 
-			 and target_x > level[i].x
-				and target_x < level[i].x + 4
-				and target_y > level[i].y
-				and target_y < level[i].y + 4 then			 
+	for x=1, map_size do
+		for y=1, map_size do
+			local tile = level_tiles[x..":"..y]
+			if tile.c ~= new_c 
+			 and target_x > tile.x
+				and target_x < tile.x + 4
+				and target_y > tile.y
+				and target_y < tile.y + 4 then			 
 				
-					local stored = level[i]
-					stored.c = new_c
-					
-				-- remove it from list and re-add it to make it render last --
-				del(level, stored)
-				add(level, stored)
+					tile.c = new_c
+					-- remove it from list and re-add it to make it render last --
+					del(level_sprites, tile)
+					add(level_sprites, tile)
 				return				
 			end
 		end
+	end
 end
 
 function update_dead_timers()
