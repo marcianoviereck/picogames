@@ -1,6 +1,7 @@
 pico-8 cartridge // http://www.pico-8.com
 version 42
 __lua__
+--general functions --
 function _update()
 	if game_state == "playing" then
 		if time_left > 0 then
@@ -116,6 +117,7 @@ function _draw()
 	end
 end
 -->8
+-- game state and init --
 game_state = "menu" -- can be: menu, playing, game_over --
 	
 	-- max mem = 2048 -- !
@@ -131,6 +133,18 @@ function _init()
 	shoot_cooldown_frames = 5
 	enemy_shoot_cooldown_frames = 50
 	
+	arrows={}
+	ball = {
+		x = 62,
+		y = 62,
+		dx = 1,
+		dy = 1,
+		c = 0
+	}
+	level_tiles = {}
+	level_sprites = {}
+	build_level()
+	
 	player = {
 		x = 63,
 		y = 120,
@@ -144,8 +158,8 @@ function _init()
 		speed = 1
 	}
 	enemy={
-		x = 63,
-		y = 10,
+		x = 64,
+		y = 8,
 		direction = 0,
 		base_spr_index = 16,
 		current_animation=nil,
@@ -153,20 +167,18 @@ function _init()
 		drawcolor = 3,
 		dead = false,
 		dead_timer = 100,
-		speed = 1
+		speed = 1,
+		actions = {
+			searching = true,
+			finding_path = false,
+			path = {},
+			state = "initial", -- painting, walking, shooting --
+			current_tile = level_tiles["16:2"],
+			target_tile = {}
+		}
 	}
 	characters = {enemy, player}
-	arrows={}
-	ball = {
-		x = 62,
-		y = 62,
-		dx = 1,
-		dy = 1,
-		c = 0
-	}
-	level_tiles = {}
-	level_sprites = {}
-	build_level()
+	
 end
 
 function build_level()
@@ -197,7 +209,7 @@ function update_paint_touches()
 					character.x < level_tile.x + 8 and
 					character.y > level_tile.y and
 					character.y < level_tile.y + 8 then
-						--character_hit(enemy)
+						character_hit(enemy)
 				end
 			end
 		end
@@ -318,6 +330,7 @@ function draw_animations()
 end
 
 -->8
+-- arrow code --
 function shoot_arrow(character)
 	local dx = 0
  local dy = 0
@@ -356,9 +369,11 @@ function shoot_arrow(character)
 end
 
 function character_hit(character_hit)
-	character_hit.dead = true
-	sfx(3)
-	-- idea: blow character up and splash paint --
+	if not character_hit.dead then
+		character_hit.dead = true
+		sfx(3)
+		-- idea: blow character up and splash paint --
+		end
 end
 
 function draw_arrows()
@@ -403,25 +418,46 @@ function update_arrows()
 	end
 end
 -->8
-level_objs={
-	{
-		walls={
-			{
-				x = 10,
-				y = 10
-			},
-			{
-				x = 20,
-				y = 20
-			}
-		}
-	}
-}
+-- level objects --
+walls={}
+walls["10:10"] = 1
+walls["20:20"] = 1
+walls["30:30"] = 1
 -->8
+-- enemy code --
 function update_enemy()
 	if enemy.dead then
 		return
 	end
+	
+	if enemy.actions.searching then
+	 local randomx = ceil(rnd(32) + 1)
+	 local randomy = ceil(rnd(32) + 1)
+	 	 
+	 local target_tile = level_tiles[randomx..":"..randomy]
+	 enemy.actions.path = {}
+	 enemy.actions.target_tile = target_tile
+	 enemy.actions.searching = false
+	 enemy.actions.finding_path = true
+	elseif enemy.actions.finding_path then
+		local current = enemy.actions.current_tile
+	 find_path(enemy.actions.target_tile)
+	end
+	
+	if enemy.actions.state == "walking" then
+		local path = enemy.actions.target_tile_path
+		local tile = enemy.actions.target_tile
+		if path and #path > 1 then
+			walk_to_path(path, "following_path")
+		elseif enemy.actions.target_tile then
+			walk_to(tile, "searching")
+		else 
+			enemy.actions.state = "searching"
+		end
+	elseif enemy.actions.state == "painting" then
+	elseif enemy.actions.state == "shooting" then
+	end
+	
  enemy_shoot_cooldown_frames -= 1
  if enemy_shoot_cooldown_frames <= 0 then
  	enemy_shoot_cooldown_frames = rnd(40) + 40	
@@ -433,32 +469,90 @@ function update_enemy()
  	enemy.direction = dir_to_player
  	shoot_arrow(enemy)
  end
+end
+
+function walk_to_path(path)
+ local first = path[1]
+ walk_to(first, "")
  
- local speed = enemy.speed
- 
-	if enemy.direction == 0 then
-		enemy.x -= speed
-	elseif enemy.direction == 2 then
-		enemy.x += speed
-	elseif enemy.direction == 1 then
-		enemy.y -= speed
-	elseif enemy.direction == 3 then
-		enemy.y += speed
-	end
+end
+
+function walk_to(tile, state_on_finish)
+	local dist_x = tile.x - enemy.x
+	local dist_y = tile.y - enemy.y 
+	local dist = calc_distance(dist_x, dist_y)
+	local speed = enemy.speed
+	local move_amount = 0
 	
-	if enemy.x < 2 then
-		enemy.x += speed
-		enemy.direction = 2
-	elseif enemy.x > 120 then
-		enemy.x -= speed
-		enemy.direction = 0
-	elseif enemy.y < 2 then
-		enemy.y += speed
-		enemy.direction = 3
-	elseif enemy.y > 120 then
-		enemy.y -= speed
-		enemy.direction = 1
+	if abs(dist) > speed then
+		if dist_x > speed then
+			enemy.x += enemy.speed
+			move_amount += enemy.speed
+		elseif dist_x < speed then
+			enemy.x -= enemy.speed
+		 move_amount += enemy.speed
+		end
+		
+		if dist_y > speed then
+			enemy.y += enemy.speed
+			move_amount += enemy.speed
+		elseif dist_y < speed then
+			enemy.y -= enemy.speed
+			move_amount += enemy.speed
+		end
+		
+		-- temp .. --
+		if dist < 1.6 then
+			-- done --
+			enemy.actions.state = state_on_finish
+		end
+	end	
+end
+
+function find_path(target_tile)
+	debug_text = "finding path.."..#enemy.actions.path
+	local current_tile = enemy.actions.current_tile
+	local closest_tile = closest_neighbour(current_tile, target_tile)
+	if closest_tile == target_tile then
+		-- done --
+		enemy.actions.finding_path = false
+	 debug_text = "path:"..#enemy.actions.path..""
+
+	else
+		add(enemy.actions.path, closest_tile)
+		--debug_text = closest_tile.x..":"..closest_tile.y
+		enemy.actions.current_tile = closest_tile
 	end
+end
+
+function closest_neighbour(current_tile, target_tile)
+	local closest_dist = 999
+	local closest_tile = target_tile
+	
+	local current_tile_x = ceil(current_tile.x / tile_size)
+	local current_tile_y = ceil(current_tile.y / tile_size)
+	local target_tile_x = target_tile.x / tile_size
+	local target_tile_y = target_tile.y / tile_size
+	
+	for x = current_tile_x - 1, current_tile_x + 2 do
+		for y = current_tile_y - 1, current_tile_y + 2 do
+			if x > 0 and x < map_size 
+				and y > 0 and y < map_size then
+					local dist_x = target_tile_x - x
+					local dist_y = target_tile_y - y 					
+					local dist = calc_distance(dist_x, dist_y)
+					if dist < closest_dist then
+						closest_dist = dist
+						closest_tile = level_tiles[x..":"..y]
+					end
+			end
+		end
+	end	
+	return closest_tile				
+end
+
+function calc_distance(dist_x, dist_y)
+ return sqrt((dist_x*dist_x) + (dist_y*dist_y))
 end
 __gfx__
 01111100001111100111100006000000066116600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
