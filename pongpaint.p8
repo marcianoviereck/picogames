@@ -525,9 +525,17 @@ function find_path(target_tile)
 		enemy.actions.finding_path = false
 		enemy.actions.state = "walking"
 	else
-		add(enemy.actions.path, closest_tile)
-		--debug_text = closest_tile.x..":"..closest_tile.y
-		enemy.actions.current_tile = closest_tile
+		if closest_tile == current_tile then
+			if closest_tile.has_wall then
+				debug_text = "has wall"
+			end
+			enemy.actions.finding_path = false
+			enemy.actions.state = "walking"
+		else
+			add(enemy.actions.path, closest_tile)
+			--debug_text = closest_tile.x..":"..closest_tile.y
+			enemy.actions.current_tile = closest_tile
+		end
 	end
 end
 
