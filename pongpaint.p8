@@ -85,11 +85,7 @@ function _draw()
 		-- for pathing debug ! -- 
 		for i=1, #enemy.actions.path do
 			local tile = enemy.actions.path[i]
-			local c = 11
-			if tile.w then
-				c = 3
-			end
-			rectfill(tile.x, tile.y, tile.x + 4, tile.y + 4, c)				
+			circfill(tile.x, tile.y, 1, 11)				
 		end
 		
 		draw_character(player) 
@@ -147,13 +143,6 @@ function _init()
 	enemy_shoot_cooldown_frames = 25
 	
 	arrows={}
-	ball = {
-		x = 62,
-		y = 62,
-		dx = 1,
-		dy = 1,
-		c = 0
-	}
 	level_tiles = {}
 	level_sprites = {}
 	build_level()
@@ -202,11 +191,8 @@ function build_level()
 			local col = 16
 			local tile_x = x*tile_size-1
 			local tile_y = y*tile_size-1
-			local tile = {x=tile_x, y=tile_y, c=col,w=false}	
+			local tile = {x=tile_x, y=tile_y, c=col}	
 			
-			if has_wall(x, y) then
-				tile.w = true
-			end
 			level_tiles[x..":"..y] = tile
 			add(level_sprites, tile)
 		end
@@ -433,8 +419,8 @@ function update_arrows()
 end
 -->8
 -- helper functions --
-function has_wall(level_x, level_y)
-	return mget(level_to_map(level_x),level_to_map(level_y)) == 6
+function has_wall(world_x, world_y)
+	return mget(world_to_map(world_x), world_to_map(world_y)) == 6
 end
 
 function calc_distance(dist_x, dist_y)
@@ -445,9 +431,8 @@ function world_to_level(coordinate)
  return ceil(coordinate / tile_size)
 end
 
-function level_to_map(coordinate)
-	-- /2 because the map has 16 tiles and the world has 32 tiles.. --
-	return ceil(coordinate/2)
+function world_to_map(coordinate) 
+ return ceil(coordinate / 8) - 1
 end
 -->8
 -- enemy code --
@@ -460,6 +445,7 @@ function update_enemy()
 	 local randomx = ceil(rnd(32) + 1)
 	 local randomy = ceil(rnd(32) + 1)
 	 local target_tile = level_tiles[randomx..":"..randomy]
+	 
 	 if target_tile == enemy.actions.current_tile 
 	 or target_tile == nil 
 	 then
@@ -501,7 +487,6 @@ function walk_to_path(path)
  if #path > 0 then
  	walk_on_path(path)
  else
- 	debug_text = "done!"
  	enemy.actions.state = "searching"
  	enemy.actions.searching = true
  end 
@@ -536,20 +521,13 @@ function walk_on_path(path)
 	end	
 end
 
-function has_wall_between(tile1, tile2)
-	for x=tile1.x, tile2.x do
-		for y=tile1.y, tile2.y do
-			local level_x = world_to_level(x)
-			local level_y = world_to_level(y)	
-			if has_wall(26, 22) then
-				debug_text = "hw "..level_x..":"..level_y
+function has_wall_around(world_x, world_y, range)
+	for x=world_x - range, world_x + range do
+		for y=world_y - range, world_y + range do
+			if has_wall(x, y) then
 				return true
-			end	
+			end
 		end
-	end 
-	if tile1.w or tile2.w then
-		debug_text = "wall in between!"
-		return true
 	end
 	
 	return false
@@ -561,19 +539,14 @@ function find_path(target_tile)
 	if closest_tile == target_tile then
 		-- done, start walking? --
 		done_finding_path()
-	elseif has_wall_between(current_tile, closest_tile) then
+	elseif has_wall_around(closest_tile.x, closest_tile.y, 3) then
 		-- wall in between --
-		debug_text = "done! because wall"
 		done_finding_path()	
 	else
 		if closest_tile == current_tile then
-			if closest_tile.has_wall then
-				debug_text = "has wall"
-			end
 			done_finding_path()
 		else
 			add(enemy.actions.path, closest_tile)
-			--debug_text = closest_tile.x..":"..closest_tile.y
 			enemy.actions.current_tile = closest_tile
 		end
 	end
@@ -586,7 +559,7 @@ end
 
 function closest_neighbour(current_tile, target_tile)
 	local closest_dist = 999
-	local closest_tile = target_tile
+	local closest_tile = nil
 	
 	local current_tile_x = world_to_level(current_tile.x)
 	local current_tile_y = world_to_level(current_tile.y)
@@ -600,7 +573,7 @@ function closest_neighbour(current_tile, target_tile)
 					local dist_x = target_tile_x - x
 					local dist_y = target_tile_y - y 					
 					local dist = calc_distance(dist_x, dist_y)
-					if not has_wall(x, y) and dist < closest_dist then
+					if dist < closest_dist then
 						closest_dist = dist
 						closest_tile = level_tiles[x..":"..y]
 					end
