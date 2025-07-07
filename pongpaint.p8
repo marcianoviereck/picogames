@@ -85,7 +85,11 @@ function _draw()
 		-- for pathing debug ! -- 
 		for i=1, #enemy.actions.path do
 			local tile = enemy.actions.path[i]
-			circfill(tile.x, tile.y, 1, 11)				
+			local c = 11
+			if tile.w then
+				c = 3
+			end
+			circfill(tile.x, tile.y, 1, c)				
 		end
 		
 		draw_character(player) 
@@ -123,6 +127,11 @@ function _draw()
 		print("winner: "..winner, 20, 60, c_t)
 		print("❎ to play again!", 20, 70, c_t)
 	end
+end
+
+function has_wall(map_x, map_y)
+	-- /2 because the map has 16 tiles and the world has 32 tiles.. --
+	return mget(ceil(map_x/2),ceil(map_y/2)) == 6
 end
 -->8
 -- game state and init --
@@ -198,7 +207,10 @@ function build_level()
 			local tile_x = x*tile_size-1
 			local tile_y = y*tile_size-1
 			local tile = {x=tile_x, y=tile_y, c=col,w=false}	
-			local has_wall = mget(tile_x, tile_y) == 6
+			
+			if has_wall(x, y) then
+				tile.w = true
+			end
 			level_tiles[x..":"..y] = tile
 			add(level_sprites, tile)
 		end
@@ -516,27 +528,42 @@ function walk_on_path(path)
 	end	
 end
 
+function has_wall_between(tile1, tile2)
+	debug_text = tostr(tile1.w)..","..tostr(tile2.w)
+	if tile1.w or tile2.w then
+		debug_text = "wall in between!"
+		return true
+	else
+		return false
+	end
+end
+
 function find_path(target_tile)
-	debug_text = "finding path.."..#enemy.actions.path
 	local current_tile = enemy.actions.current_tile
 	local closest_tile = closest_neighbour(current_tile, target_tile)
 	if closest_tile == target_tile then
 		-- done, start walking? --
-		enemy.actions.finding_path = false
-		enemy.actions.state = "walking"
+		done_finding_path()
+	elseif has_wall_between(current_tile, closest_tile) then
+		-- wall in between --
+		done_finding_path()	
 	else
 		if closest_tile == current_tile then
 			if closest_tile.has_wall then
 				debug_text = "has wall"
 			end
-			enemy.actions.finding_path = false
-			enemy.actions.state = "walking"
+			done_finding_path()
 		else
 			add(enemy.actions.path, closest_tile)
 			--debug_text = closest_tile.x..":"..closest_tile.y
 			enemy.actions.current_tile = closest_tile
 		end
 	end
+end
+
+function done_finding_path()
+	enemy.actions.finding_path = false
+	enemy.actions.state = "walking"
 end
 
 function closest_neighbour(current_tile, target_tile)
@@ -551,12 +578,11 @@ function closest_neighbour(current_tile, target_tile)
 	for x = current_tile_x - 1, current_tile_x + 2 do
 		for y = current_tile_y - 1, current_tile_y + 2 do
 			if x > 1 and x < map_size - 1 
-				and y > 1 and y < map_size - 1 then
-					local has_wall = mget(ceil(x/2),ceil(y/2)) == 6
+				and y > 1 and y < map_size - 1 then 
 					local dist_x = target_tile_x - x
 					local dist_y = target_tile_y - y 					
 					local dist = calc_distance(dist_x, dist_y)
-					if not has_wall and dist < closest_dist then
+					if not has_wall(x, y) and dist < closest_dist then
 						closest_dist = dist
 						closest_tile = level_tiles[x..":"..y]
 					end
