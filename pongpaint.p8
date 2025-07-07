@@ -89,7 +89,7 @@ function _draw()
 			if tile.w then
 				c = 3
 			end
-			circfill(tile.x, tile.y, 1, c)				
+			rectfill(tile.x, tile.y, tile.x + 4, tile.y + 4, c)				
 		end
 		
 		draw_character(player) 
@@ -129,10 +129,6 @@ function _draw()
 	end
 end
 
-function has_wall(map_x, map_y)
-	-- /2 because the map has 16 tiles and the world has 32 tiles.. --
-	return mget(ceil(map_x/2),ceil(map_y/2)) == 6
-end
 -->8
 -- game state and init --
 game_state = "menu" -- can be: menu, playing, game_over --
@@ -366,8 +362,8 @@ function shoot_arrow(character)
 				
 	local spawn_x = character.x + 4
 	local spawn_y = character.y + 4
-	local corrected_x = (ceil(spawn_x / tile_size) * tile_size) + 1
-	local corrected_y = (ceil(spawn_y / tile_size) * tile_size) + 1
+	local corrected_x = (world_to_level(spawn_x) * tile_size) + 1
+	local corrected_y = (world_to_level(spawn_y) * tile_size) + 1
 	
 	local arrow = {
 	 x = corrected_x - 2, -- to put in middle --
@@ -436,7 +432,23 @@ function update_arrows()
 	end
 end
 -->8
+-- helper functions --
+function has_wall(level_x, level_y)
+	return mget(level_to_map(level_x),level_to_map(level_y)) == 6
+end
 
+function calc_distance(dist_x, dist_y)
+ return sqrt((dist_x*dist_x) + (dist_y*dist_y))
+end
+
+function world_to_level(coordinate)
+ return ceil(coordinate / tile_size)
+end
+
+function level_to_map(coordinate)
+	-- /2 because the map has 16 tiles and the world has 32 tiles.. --
+	return ceil(coordinate/2)
+end
 -->8
 -- enemy code --
 function update_enemy()
@@ -501,23 +513,19 @@ function walk_on_path(path)
 	local dist_y = target.y - enemy.y 
 	local dist = calc_distance(dist_x, dist_y)
 	local speed = enemy.speed
-	local move_amount = 0
+	local min_dist = 1
 	
-	if abs(dist) > speed then
-		if dist_x > speed then
-			enemy.x += enemy.speed
-			move_amount += enemy.speed
-		elseif dist_x < speed then
-			enemy.x -= enemy.speed
-		 move_amount += enemy.speed
+	if abs(dist) > min_dist then
+		if dist_x > min_dist then
+			enemy.x += speed
+		elseif dist_x < min_dist then
+			enemy.x -= speed
 		end
 		
-		if dist_y > speed then
-			enemy.y += enemy.speed
-			move_amount += enemy.speed
-		elseif dist_y < speed then
-			enemy.y -= enemy.speed
-			move_amount += enemy.speed
+		if dist_y > min_dist then
+			enemy.y += speed
+		elseif dist_y < min_dist then
+			enemy.y -= speed
 		end
 		
 		-- temp .. --
@@ -529,13 +537,22 @@ function walk_on_path(path)
 end
 
 function has_wall_between(tile1, tile2)
-	debug_text = tostr(tile1.w)..","..tostr(tile2.w)
+	for x=tile1.x, tile2.x do
+		for y=tile1.y, tile2.y do
+			local level_x = world_to_level(x)
+			local level_y = world_to_level(y)	
+			if has_wall(26, 22) then
+				debug_text = "hw "..level_x..":"..level_y
+				return true
+			end	
+		end
+	end 
 	if tile1.w or tile2.w then
 		debug_text = "wall in between!"
 		return true
-	else
-		return false
 	end
+	
+	return false
 end
 
 function find_path(target_tile)
@@ -546,6 +563,7 @@ function find_path(target_tile)
 		done_finding_path()
 	elseif has_wall_between(current_tile, closest_tile) then
 		-- wall in between --
+		debug_text = "done! because wall"
 		done_finding_path()	
 	else
 		if closest_tile == current_tile then
@@ -570,8 +588,8 @@ function closest_neighbour(current_tile, target_tile)
 	local closest_dist = 999
 	local closest_tile = target_tile
 	
-	local current_tile_x = ceil(current_tile.x / tile_size)
-	local current_tile_y = ceil(current_tile.y / tile_size)
+	local current_tile_x = world_to_level(current_tile.x)
+	local current_tile_y = world_to_level(current_tile.y)
 	local target_tile_x = target_tile.x / tile_size
 	local target_tile_y = target_tile.y / tile_size
 	
@@ -590,10 +608,6 @@ function closest_neighbour(current_tile, target_tile)
 		end
 	end	
 	return closest_tile				
-end
-
-function calc_distance(dist_x, dist_y)
- return sqrt((dist_x*dist_x) + (dist_y*dist_y))
 end
 __gfx__
 000000000000000000000000000000000000000000000000dddddddd000000001111111100000000000000000000000000000000000000000000000000000000
