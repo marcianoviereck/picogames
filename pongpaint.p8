@@ -61,7 +61,7 @@ function _update()
 			_init()
 		end
 	elseif game_state == "game_over" then
-		if btn(5) then
+		if btn(4) then
 			game_state = "playing"
 			_init()
 		end
@@ -119,7 +119,7 @@ function _draw()
 		rectfill(0, 0, 128, 128, c)
 		print(score, 10, 40, c_t)
 		print("winner: "..winner, 20, 60, c_t)
-		print("❎ to play again!", 20, 70, c_t)
+		print("❎/z to play again!", 20, 70, c_t)
 	end
 end
 
@@ -169,7 +169,7 @@ function _init()
 	tiles_enemy = 0
 	tiles_player = 0
 	winner = "draw"
-	round_time = 15 * 30 -- becaue: 30 fps --
+	round_time = 30 * 30 -- becaue: 30 fps --
 	time_left = round_time
 	map_size=32
 	tile_size=4
@@ -182,8 +182,8 @@ function _init()
 	
 	player_one = {
 		id = 0,
-		x = 63,
-		y = 120,
+		x = 110,
+		y = 115,
 		direction=0, -- 0 = left, 1 = up, 2 = right, 3 = down --
 		base_spr_index = 0,
 		current_animation=nil,
@@ -196,7 +196,7 @@ function _init()
 		shoot_cooldown_frames = 5
 	}
 	enemy={
-		x = 64,
+		x = 8,
 		y = 8,
 		direction = 0,
 		base_spr_index = 16,
@@ -213,7 +213,7 @@ function _init()
 			finding_path = false,
 			path = {},
 			state = "initial", -- painting, walking, shooting --
-			current_tile = level_tiles["16:2"],
+			current_tile = level_tiles["2:2"],
 			target_tile = {}
 		}
 	}
@@ -259,9 +259,11 @@ function find_random_spawn_tile()
 	local random_tile_x = ceil(rnd(map_size) + 1)
 	local random_tile_y = ceil(rnd(map_size) + 1)
 	
+	debug_text = random_tile_x..":"..random_tile_y
 	if has_wall(random_tile_x, random_tile_y) then
 		find_random_spawn_tile()
-	end			
+	end
+	debug_text = random_tile_x..":"..random_tile_y
 	local tile = level_tiles[random_tile_x..":"..random_tile_y]
 	return tile
 end
@@ -274,6 +276,7 @@ function update_dead_timers()
 				characters[i].dead = false
 				characters[i].dead_timer = 100
 				local tile = find_random_spawn_tile()
+				
 				if characters[i] == enemy then
 					enemy.x = tile.x
 					enemy.y = tile.y
@@ -619,7 +622,7 @@ function find_path(target_tile)
 	if closest_tile == target_tile then
 		-- done, start walking? --
 		done_finding_path()
-	elseif has_wall_around(closest_tile.x, closest_tile.y, 3) then
+	elseif closest_tile ~= nil and has_wall_around(closest_tile.x, closest_tile.y, 3) then
 		-- wall in between --
 		done_finding_path()	
 	else
