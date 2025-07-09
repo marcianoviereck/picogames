@@ -7,51 +7,32 @@ function _update()
 		if time_left > 0 then
 		 time_left -= 1
 		
-			update_enemy()
-			update_arrows()
-			update_animation(player)
-			update_dead_timers()
-			if shoot_cooldown_frames > 0 then
-				shoot_cooldown_frames -= 1
+			if num_players == 1 then
+				update_enemy()
 			end
 			
-			if player.dead == false then
-				local speed = player.speed
-				local new_x = player.x
-				local new_y = player.y
-				if new_x ~= nil and new_y ~= nil then
-					
-					if btn(0) then
-						new_x -= speed
-						player.direction = 0
-					elseif btn(1) then
-						new_x += speed
-						player.direction = 2
-					end
-					if btn(2) then
-						new_y -= speed
-						player.direction = 1
-					elseif btn(3) then
-						new_y += speed
-						player.direction = 3
-					end	
-					
-					if not has_wall_around(new_x+4, new_y+4, 4) then
-						player.x = new_x
-						player.y = new_y
-					end
-					
-					if btn(5) and shoot_cooldown_frames <= 0 then
-					 shoot_cooldown_frames = 20
-					 shoot_arrow(player)
-					end
+			update_arrows()
+			--update_animation(player)
+			update_dead_timers()
+			
+			if num_players > 0 then
+				update_player(1)
+				if player_one.shoot_cooldown_frames > 0 then
+					player_one.shoot_cooldown_frames -= 1
 				end
 			end
+			if num_players > 1 then
+				update_player(2)
+				if enemy.shoot_cooldown_frames > 0 then
+					enemy.shoot_cooldown_frames -= 1
+				end
+			end
+			
 		else
 			for x=1, map_size do
 				for y=1, map_size do
 					local tile = level_tiles[x..":"..y]
-					if tile.c == player.c then
+					if tile.c == player_one.c then
 						tiles_player += 1
 					elseif tile.c == enemy.c then
 						tiles_enemy += 1
@@ -70,6 +51,12 @@ function _update()
 		end
 	elseif game_state == "menu" then
 		if btn(5) then
+			num_players = 2
+			game_state = "playing"
+			_init()
+		end
+		if btn(4) then
+			num_players = 1
 			game_state = "playing"
 			_init()
 		end
@@ -98,9 +85,9 @@ function _draw()
 			--circfill(tile.x, tile.y, 1, 11)				
 		end
 		
-		draw_character(player) 
-		draw_character(enemy)
-		draw_animations()
+		draw_character(characters[1]) 
+		draw_character(characters[2])
+		--draw_animations()
 		draw_arrows()
 		
 			-- ui --
@@ -114,8 +101,9 @@ function _draw()
 	elseif game_state == "menu" then
 		rectfill(0, 0, 128, 128, 2)
 		print("start game?", 30, 50, 15)
-		print("press ❎ to start", 30, 60, 15)
-		print("controls: ❎ = shoot", 30, 70, 15)
+		print("press ❎/z to start", 30, 60, 15)
+		print("2p mode = 🅾️/x", 30, 70, 15)
+		print("controls: ❎/z = shoot", 30, 80, 15)
 	elseif game_state == "game_over" then
 		local score = "player: "..tiles_player.." / enemy: "..tiles_enemy
 		local text = "its a draw!..."
@@ -123,9 +111,9 @@ function _draw()
 		local c_t = 6
 		if winner == "enemy" then
 			c = enemy.c
-			c_t = player.c
+			c_t = player_one.c
 		elseif winner == "player" then
-			c = player.c
+			c = player_one.c
 			c_t = enemy.c
 		end
 		rectfill(0, 0, 128, 128, c)
@@ -135,9 +123,45 @@ function _draw()
 	end
 end
 
+function update_player(player_number)
+	local player = characters[player_number]
+	if player.dead == false then
+		local speed = player.speed
+		local new_x = player.x
+		local new_y = player.y
+		local p_index = player_number - 1
+		if new_x ~= nil and new_y ~= nil then			
+			if btn(0, p_index) then
+				new_x -= speed
+				player.direction = 0
+			elseif btn(1, p_index) then
+				new_x += speed
+				player.direction = 2
+			end
+			if btn(2, p_index) then
+				new_y -= speed
+				player.direction = 1
+			elseif btn(3, p_index) then
+				new_y += speed
+				player.direction = 3
+			end	
+			
+			if not has_wall_around(new_x+4, new_y+4, 4) then
+				player.x = new_x
+				player.y = new_y
+			end
+			
+			if btn(4, p_index) and player.shoot_cooldown_frames <= 0 then
+			 player.shoot_cooldown_frames = 20
+			 shoot_arrow(player)
+			end
+		end
+	end
+end
 -->8
 -- game state and init --
 game_state = "menu" -- can be: menu, playing, game_over --
+num_players = 1
 	
 	-- max mem = 2048 -- !
 function _init()
@@ -149,15 +173,14 @@ function _init()
 	time_left = round_time
 	map_size=32
 	tile_size=4
-	shoot_cooldown_frames = 5
-	enemy_shoot_cooldown_frames = 25
+	shoot_cooldown_frames = 25
 	
 	arrows={}
 	level_tiles = {}
 	level_sprites = {}
 	build_level()
 	
-	player = {
+	player_one = {
 		id = 0,
 		x = 63,
 		y = 120,
@@ -169,7 +192,8 @@ function _init()
 		dead = false,
 		has_weapon = true,
 		dead_timer = 100,
-		speed = 1
+		speed = 1,
+		shoot_cooldown_frames = 5
 	}
 	enemy={
 		x = 64,
@@ -183,6 +207,7 @@ function _init()
 		dead_timer = 50,
 		speed = 1,
 		has_weapon = true,
+		shoot_cooldown_frames = 5,
 		actions = {
 			searching = true,
 			finding_path = false,
@@ -192,7 +217,7 @@ function _init()
 			target_tile = {}
 		}
 	}
-	characters = {enemy, player}
+	characters = {player_one, enemy}
 	
 end
 
@@ -252,8 +277,10 @@ function update_dead_timers()
 				if characters[i] == enemy then
 					enemy.x = tile.x
 					enemy.y = tile.y
-					enemy.actions.current_tile = tile
-					enemy.actions.searching = true						
+					if num_players == 1 then
+						enemy.actions.current_tile = tile
+						enemy.actions.searching = true						
+					end	
 				else
 					characters[i].x = tile.x
 					characters[i].y = tile.y
@@ -337,16 +364,14 @@ function draw_character(character)
 	end
 end
 
-function draw_animations()
+function draw_animations(player_num)
+	local player = characters[player_num]
 	if player.current_animation then
 			spr(
 				player.current_animation.current_frame, 
 				player.x + player.current_animation.offset_x, 
 				player.y + player.current_animation.offset_y
 			)
-	end
-	
-	if enemy.current_animation then
 	end
 end
 
@@ -380,7 +405,7 @@ function shoot_arrow(character)
 		size = 0.5,
 		speed = 8
 	}
-	if character.c == player.c then
+	if character.c == player_one.c then
 		sfx(0)
 	else
 		sfx(1)
@@ -419,10 +444,10 @@ function update_arrows()
 			
 			for i=1, #characters do
 				local character = characters[i]
-				if (arrow.c == player.c 
+				if (arrow.c == player_one.c 
 					and character.c == enemy.c) 
 					or (arrow.c == enemy.c 
-					and character.c == player.c) then
+					and character.c == player_one.c) then
 						if arrow.x > character.x - 6 and
 							arrow.x < character.x + 6 and
 							arrow.y > character.y - 6  and
@@ -513,12 +538,12 @@ function update_enemy()
 	elseif enemy.actions.state == "shooting" then
 	end
 	
- enemy_shoot_cooldown_frames -= 1
- if enemy_shoot_cooldown_frames <= 0 then
- 	enemy_shoot_cooldown_frames = rnd(20) + 30	
+ enemy.shoot_cooldown_frames -= 1
+ if enemy.shoot_cooldown_frames <= 0 then
+ 	enemy.shoot_cooldown_frames = rnd(20) + 30	
  	local dir_to_player = -1
-  local dist_x = player.x - enemy.x
-  local dist_y = player.y - enemy.y
+  local dist_x = player_one.x - enemy.x
+  local dist_y = player_one.y - enemy.y
   local shoot_randomly = rnd(5) == 4
   if shoot_randomly then
   	dir_to_player = -1
