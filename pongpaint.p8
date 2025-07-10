@@ -239,7 +239,7 @@ function find_spawn_points()
 	for x=1, map_size/2 do
 		for y=1, map_size/2 do
 			if mget(x, y) == 13 then
-				add(spawn_points, {x=x,y=y, occupied=false})		
+				add(spawn_points, {x=map_to_level(x),y=map_to_level(y), occupied=false})		
 			end
 		end
 	end
@@ -266,14 +266,11 @@ function update_level_once(target_x, target_y, new_c)
 end
 
 function find_random_spawn_tile()
-	local random_index = rnd(#spawn_points) + 1
-	debug_text = random_index..""
+	local random_index = ceil(rnd(#spawn_points - 1) + 1)
 	local random_spawn_point = spawn_points[random_index]
-	if random_spawn_point.occupied then
-			return find_random_spawn_tile()
-	else	
-		return level_tiles[random_spawn_point.x..":"..random_spawn_point.y]
-	end
+	debug_text = ""..#spawn_points
+	
+	return level_tiles[random_spawn_point.x..":"..random_spawn_point.y]
 end
 
 function update_dead_timers()
@@ -459,10 +456,10 @@ function update_arrows()
 					and character.c == enemy.c) 
 					or (arrow.c == enemy.c 
 					and character.c == player_one.c) then
-						if arrow.x > character.x - 6 and
-							arrow.x < character.x + 6 and
-							arrow.y > character.y - 6  and
-							arrow.y < character.y + 6 then
+						if arrow.x > character.x - 4 and
+							arrow.x < character.x + 8 and
+							arrow.y > character.y - 4  and
+							arrow.y < character.y + 8 then
 								character_hit(character)
 						end
 					end
@@ -499,6 +496,10 @@ end
 
 function world_to_map(coordinate) 
  return ceil(coordinate / 8) - 1
+end
+
+function map_to_level(coordinate)
+	return coordinate * 2
 end
 
 function has_wall_around(world_x, world_y, range)
@@ -620,7 +621,7 @@ function walk_on_path(path)
 		if move_x == 0 and move_y == 0 then
 			-- did not move.. stuck?
 			del(path, target)	
-			debug_text = "stuckk"
+		--	debug_text = "stuckk"
 			return
 		else
 			enemy.x += move_x
