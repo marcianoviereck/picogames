@@ -40,7 +40,7 @@ function _update()
 				end
 			end
 			
-			winner = "draw"
+			winner_index = -1
 			if tiles_player > tiles_enemy then
 				winner = "player"
 			elseif tiles_enemy > tiles_player then
@@ -106,19 +106,15 @@ function _draw()
 	elseif game_state == "game_over" then
 		local score = "player: "..tiles_player.." / enemy: "..tiles_enemy
 		local text = "its a draw!..."
-		local c = 5
-		local c_t = 6
-		if winner == "enemy" then
-			c = enemy.c
-			c_t = player_one.c
-		elseif winner == "player" then
-			c = player_one.c
-			c_t = enemy.c
+		local c = 6
+		if winner_index != -1 then
+			c = characters[winner_index].c
+			text = "winner: "..characters[winner_index].name
 		end
 		rectfill(0, 0, 128, 128, c)
-		print(score, 10, 40, c_t)
-		print("winner: "..winner, 20, 60, c_t)
-		print("❎/z to play again!", 20, 70, c_t)
+		print(score, 10, 40, 1)
+		print(text, 20, 60, 1)
+		print("❎/z to play again!", 20, 70, 1)
 	end
 end
 
@@ -169,7 +165,7 @@ function _init()
 	spawn_points = {}
 	tiles_enemy = 0
 	tiles_player = 0
-	winner = "draw"
+	winner_index = -1
 	round_time = 30 * 30 -- becaue: 30 fps --
 	time_left = round_time
 	map_size=32
@@ -185,6 +181,8 @@ function _init()
 	
 	player_one = {
 		id = 0,
+		name = "player",
+		score = 0,
 		x = 110,
 		y = 115,
 		direction = 0, -- 0 = left, 1 = up, 2 = right, 3 = down --
@@ -206,6 +204,8 @@ function _init()
 	enemy={
 		x = 8,
 		y = 8,
+		name = "enemy",
+		score = 0,
 		direction = 0,
 		base_spr_index = 16,
 		current_animation=nil,
@@ -225,6 +225,7 @@ function _init()
 			target_tile = {}
 		}
 	}
+
 	characters = {player_one, enemy}
 	respawn_character(player_one)
 	respawn_character(enemy)
