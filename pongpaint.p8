@@ -244,7 +244,8 @@ function build_level()
 end
 
 function find_spawn_points()
-	for x=1 + get_map_offset_x(), (map_size/2) + offset_x do
+	local offset_x = get_map_offset_x()
+	for x=1 + offset_x, (map_size/2) + offset_x do
 		for y=1, map_size/2 do
 			if mget(x, y) == 13 then
 				add(spawn_points, {x=map_to_level(x),y=map_to_level(y), occupied=false})		
@@ -487,8 +488,8 @@ end
 -- helper functions --
 function has_wall(world_x, world_y)
 	-- for now: only x axis has multiple levels --
-	local wall_x = world_x + (num_level - 1) * 16))
-	local tile_sprite = mget(world_to_map(, world_to_map(world_y))
+	local wall_x = world_x + ((num_level - 1) * 128)
+	local tile_sprite = mget(world_to_map(wall_x), world_to_map(world_y))
 	return tile_sprite == 14 or tile_sprite == 15
 end
 
