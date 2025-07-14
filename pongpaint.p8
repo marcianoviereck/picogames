@@ -149,6 +149,10 @@ function update_player(player_number)
 				player.direction = 3
 			end	
 			
+			if is_in_paint(player) then
+				
+			end
+			
 			if not has_wall_around(new_x+4, new_y+4, 4) then
 				player.x = new_x
 				player.y = new_y
@@ -440,7 +444,8 @@ function shoot_arrow(character)
 		c = character.c,
 		drawcolor = character.c,
 		size = 0.5,
-		speed = 8
+		speed = 8,
+		ttl = 6
 	}
 	if character.c == player_one.c then
 		sfx(0)
@@ -471,9 +476,8 @@ function update_arrows()
 		local arrow = arrows[i]
 		arrow.x += arrow.dx * arrow.speed
 		arrow.y += arrow.dy * arrow.speed
-		
-		if arrow.x > 128 or arrow.x < 0
-		or arrow.y > 128 or arrow.y < 0 then
+		arrow.ttl -= 1
+		if arrow.ttl <= 0 then
 			arrow_to_del = arrow
 		else
 			-- + 2 is to fix the offset of the arrow.. --
@@ -531,6 +535,29 @@ end
 
 function map_to_level(coordinate)
 	return coordinate * 2
+end
+
+function is_in_paint(character)
+	local in_paint = false
+	for x=1, map_size do
+		for y=1, map_size do
+			local tile = level_tiles[x..":"..y]
+			if tile 
+				and tile.c ~= 16 
+				and tile.c ~= character.c then
+				if tile.x > character.x - 4 and
+							tile.x < character.x + 8 and
+							tile.y > character.y - 4  and
+							tile.y < character.y + 8 then
+								in_paint = true
+						end
+			end
+		end
+	end
+	
+	if in_paint then
+		debug_text = "in paint!"	
+	end
 end
 
 function has_wall_around(world_x, world_y, range)
@@ -651,7 +678,6 @@ function walk_on_path(path)
 		if move_x == 0 and move_y == 0 then
 			-- did not move.. stuck?
 			del(path, target)	
-		--	debug_text = "stuckk"
 			return
 		else
 			enemy.x += move_x
